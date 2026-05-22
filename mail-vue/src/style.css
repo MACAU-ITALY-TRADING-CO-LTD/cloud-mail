@@ -55,6 +55,27 @@ button, input, select, textarea {
     background: none;
 }
 
+/*
+ * Prevent iOS Safari from zooming the viewport when an input is focused.
+ *
+ * iOS auto-zooms whenever a focused field has a computed font-size below
+ * 16px. The webmail's `body { font-size: 14px }` propagates to inputs via
+ * the inherit rule above, so every login / search / compose tap causes
+ * a viewport jump on iPhone. The zoom is not reverted on blur, leaving
+ * the layout stuck at the zoomed scale.
+ *
+ * Scoping the override to coarse pointers leaves desktop UI density
+ * (Element Plus defaults to 14px control text) unchanged, while ensuring
+ * touch devices always present inputs at ≥ 16px.
+ */
+@media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+}
+
 *:focus {
     outline: none;
 }
