@@ -64,6 +64,13 @@ button, input, select, textarea {
  * a viewport jump on iPhone. The zoom is not reverted on blur, leaving
  * the layout stuck at the zoomed scale.
  *
+ * Bare `input` / `select` / `textarea` cover the login form and any
+ * native control. The Element Plus selectors (`.el-input__inner`,
+ * `.el-textarea__inner`) cover the rest of the app — those rules
+ * normally declare `font-size: inherit` with class-level specificity,
+ * which beats a plain element selector, so we have to match their
+ * specificity to actually take effect.
+ *
  * Scoping the override to coarse pointers leaves desktop UI density
  * (Element Plus defaults to 14px control text) unchanged, while ensuring
  * touch devices always present inputs at ≥ 16px.
@@ -71,7 +78,9 @@ button, input, select, textarea {
 @media (pointer: coarse) {
     input,
     select,
-    textarea {
+    textarea,
+    .el-input__inner,
+    .el-textarea__inner {
         font-size: 16px;
     }
 }
