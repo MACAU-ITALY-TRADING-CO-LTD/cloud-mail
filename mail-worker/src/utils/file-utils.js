@@ -8,6 +8,20 @@ const fileUtils = {
 		}
 	},
 
+	contentDisposition(filename, disposition = 'attachment') {
+		const originalName = String(filename || 'attachment');
+		const asciiName = originalName
+			.replace(/[\r\n]/g, '_')
+			.normalize('NFKD')
+			.replace(/[^\x20-\x7E]/g, '')
+			.replace(/[\\/:*?"<>|;]/g, '_')
+			.trim() || 'attachment';
+		const encodedName = encodeURIComponent(originalName)
+			.replace(/['()*]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+
+		return `${disposition}; filename="${asciiName}"; filename*=UTF-8''${encodedName}`;
+	},
+
 	async getBuffHash(buff) {
 		const hashBuffer = await crypto.subtle.digest('SHA-256', buff);
 		const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -66,4 +80,3 @@ const fileUtils = {
 
 
 export default fileUtils;
-

@@ -55,9 +55,20 @@
                 <div class="att-size">{{ formatBytes(att.size) }}</div>
                 <div class="opt-icon att-icon">
                   <Icon v-if="isImage(att.filename)" icon="hugeicons:view" width="22" height="22" @click="showImage(att.key)"/>
-                  <a :href="cvtR2Url(att.key)" download>
-                    <Icon icon="system-uicons:push-down" width="22" height="22"/>
-                  </a>
+                  <Icon
+                      v-if="downloadingAttId === att.attId"
+                      icon="svg-spinners:90-ring-with-bg"
+                      width="22"
+                      height="22"
+                  />
+                  <Icon
+                      v-else
+                      class="download-icon"
+                      icon="system-uicons:push-down"
+                      width="22"
+                      height="22"
+                      @click="downloadAttachment(att)"
+                  />
                 </div>
               </div>
             </div>
@@ -101,6 +112,7 @@ const router = useRouter()
 const email = emailStore.contentData.email
 const showPreview = ref(false)
 const srcList = reactive([])
+const downloadingAttId = ref(null)
 
 const { t } = useI18n()
 watch(() => accountStore.currentAccountId, () => {
@@ -146,6 +158,53 @@ function showImage(key) {
 
 function isImage(filename) {
   return ['png', 'jpg', 'jpeg', 'bmp', 'gif','jfif'].includes(getExtName(filename))
+}
+
+async function downloadAttachment(att) {
+  if (downloadingAttId.value !== null) return;
+
+  downloadingAttId.value = att.attId;
+
+  try {
+    const response = await fetch(`/api/email/attachment/${att.attId}`, {
+      headers: {
+        Authorization: localStorage.getItem('token') || '',
+        'accept-language': settingStore.lang
+      }
+    });
+    const contentType = response.headers.get('Content-Type') || '';
+
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      if (data.code === 401) {
+        localStorage.removeItem('token');
+        await router.replace('/login');
+      }
+      throw new Error(data.message || t('reqFailErrorMsg'));
+    }
+
+    if (!response.ok) {
+      throw new Error(t('reqFailErrorMsg'));
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = att.filename || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+  } catch (error) {
+    ElMessage({
+      message: error.message || t('reqFailErrorMsg'),
+      type: 'error',
+      plain: true
+    });
+  } finally {
+    downloadingAttId.value = null;
+  }
 }
 
 function formateReceive(recipient) {

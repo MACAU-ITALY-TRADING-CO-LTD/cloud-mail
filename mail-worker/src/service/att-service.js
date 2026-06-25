@@ -47,6 +47,31 @@ const attService = {
 		).all();
 	},
 
+	async download(c, attId, userId, allowAnyUser = false) {
+		const filters = [
+			eq(att.attId, attId),
+			eq(att.type, attConst.type.ATT),
+			isNull(att.contentId)
+		];
+
+		if (!allowAnyUser) {
+			filters.push(eq(att.userId, userId));
+		}
+
+		const attachment = await orm(c).select().from(att).where(and(...filters)).get();
+
+		if (!attachment) {
+			return null;
+		}
+
+		const object = await r2Service.getObj(c, attachment.key);
+		if (!object) {
+			return null;
+		}
+
+		return { attachment, object };
+	},
+
 	async toImageUrlHtml(c, content) {
 
 		const { r2Domain } = await settingService.query(c);
