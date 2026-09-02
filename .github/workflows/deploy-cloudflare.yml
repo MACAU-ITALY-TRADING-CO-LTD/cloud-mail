@@ -11,7 +11,7 @@ on:
       run_database_init:
         description: "Run database initialization after deployment"
         required: true
-        default: true
+        default: false
         type: boolean
 
 jobs:
@@ -247,7 +247,7 @@ jobs:
           echo "✅ Setup completed."
 
       - name: ♻️ 初始化数据库 / Initialize database
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_database_init }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_database_init }}
         run: |
           echo "🛠️ Starting database initialization..."
           sleep 15
