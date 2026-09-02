@@ -17,7 +17,7 @@ const elementLocale = computed(() => {
   if (settingStore.lang === 'it') return itIt
   return null
 })
-const htmlLanguages = {zh: 'zh-HK', en: 'en', it: 'it'}
+const htmlLanguages = {zh: 'zh-MO', en: 'en', it: 'it'}
 const applyLanguage = (lang) => {
   locale.value = lang
   document.documentElement.lang = htmlLanguages[lang] || 'en'
