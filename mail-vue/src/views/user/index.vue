@@ -10,8 +10,8 @@
         >
         </el-input>
       </div>
-      <el-select v-model="params.status" placeholder="Select" class="status-select"
-                 :style="`width: ${locale === 'en' ? 95 : 80 }px`">
+      <el-select v-model="params.status" :placeholder="$t('select')" class="status-select"
+                 :style="`width: ${locale === 'zh' ? 80 : locale === 'it' ? 110 : 95 }px`">
         <el-option :key="-1" :label="$t('all')" :value="-1"/>
         <el-option :key="0" :label="$t('active')" :value="0"/>
         <el-option :key="1" :label="$t('banned')" :value="1"/>
@@ -145,7 +145,7 @@
     <el-dialog class="dialog" v-model="setTypeShow" :title="$t('changePerm')" @closed="resetUserForm">
       <div class="dialog-box">
         <el-input disabled :model-value="$t('admin')" v-if="userForm.type === 0"/>
-        <el-select v-else v-model="userForm.type" placeholder="Select">
+        <el-select v-else v-model="userForm.type" :placeholder="$t('select')">
           <el-option v-for="item in roleList" :label="item.name" :value="item.roleId" :key="item.roleId"/>
         </el-select>
         <el-button :disabled="userForm.type === 0" class="btn" :loading="settingLoading" type="primary" @click="setType"
@@ -194,13 +194,13 @@
             <div class="email-row">{{ props.row.email }}</div>
           </template>
         </el-table-column>
-        <el-table-column property="address" :label="t('tabStatus')"  :width="locale === 'en' ? 75 : 65" >
+        <el-table-column property="address" :label="t('tabStatus')"  :width="locale === 'zh' ? 65 : locale === 'it' ? 90 : 75" >
           <template #default="props">
             <el-tag type="primary" disable-transitions v-if="props.row.isDel === 0">{{$t('active')}}</el-tag>
             <el-tag type="info" disable-transitions v-if="props.row.isDel === 1">{{$t('deleted')}}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column :label="t('action')" :width="locale === 'en' ? 75 : 65" >
+        <el-table-column :label="t('action')" :width="locale === 'zh' ? 65 : locale === 'it' ? 85 : 75" >
           <template #default="props">
             <el-dropdown trigger="click">
               <el-button type="primary" size="small">{{t('action')}}</el-button>
@@ -229,9 +229,9 @@
       <div class="details">
         <div v-if="userDetails.username"><span class="details-item-title">LinuxDo:</span>
           <el-avatar :src="userDetails.avatar" :size="30" class="linuxdo-avatar"  />
-          <span style="margin: 0 10px">用户名：{{userDetails.username}}</span>
+          <span style="margin: 0 10px">{{ $t('username') }}：{{userDetails.username}}</span>
           <span>
-                    等级：<el-tag type="success">{{userDetails.trustLevel}}</el-tag>
+                    {{ $t('level') }}：<el-tag type="success">{{userDetails.trustLevel}}</el-tag>
                   </span>
         </div>
         <div v-if="!sendNumShow"><span
@@ -1030,7 +1030,7 @@ function adjustWidth() {
   sendNumShow.value = width > 685
   typeShow.value = width > 767
   emailWidth.value = width > 480 ? 230 : null
-  settingWidth.value = width < 480 ? (locale.value === 'en' ? 85 : 75) : null
+  settingWidth.value = width < 480 ? (locale.value === 'zh' ? 75 : 85) : null
   expandWidth.value = width < 480 ? 30 : 35
   pagerCount.value = width < 768 ? 7 : 11
   receiveWidth.value = width < 480 ? 90 : null

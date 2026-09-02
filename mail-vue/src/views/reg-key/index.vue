@@ -203,6 +203,14 @@ function formatUserCreateTime(regKey) {
       return createTime.format('MMM D, YYYY HH:mm');
     }
 
+  } else if (settingStore.lang === 'it') {
+
+    if (expireYear === currentYear) {
+      return createTime.format('D MMM, HH:mm');
+    } else {
+      return createTime.format('D MMM YYYY, HH:mm');
+    }
+
   } else {
 
     if (expireYear === currentYear) {
@@ -225,6 +233,12 @@ function formatExpireTime(expireTime) {
     return expireYear === currentYear
         ? expireDate.format('MMM D')
         : expireDate.format('MMM D, YYYY');
+
+  } else if (settingStore.lang === 'it') {
+
+    return expireYear === currentYear
+        ? expireDate.format('D MMM')
+        : expireDate.format('D MMM YYYY');
 
   } else {
 
@@ -267,9 +281,9 @@ async function copyCode(code) {
       plain: true,
     })
   } catch (err) {
-    console.error('复制失败:', err);
+    console.error(`${t('copyFailMsg')}:`, err);
     ElMessage({
-      message: '复制失败',
+      message: t('copyFailMsg'),
       type: 'error',
       plain: true,
     })

@@ -337,7 +337,16 @@ const en = {
     searchUser: 'Search by user',
     searchEmail: 'Search by Email',
     searchSender: 'Search by Sender',
-    userEmail: 'Email Address'
+    userEmail: 'Email Address',
+    loggingIn: 'Signing in...',
+    bindEmailTitle: 'Register Email Address',
+    bind: 'Link',
+    bindEmailPrompt: 'Register and link an email address',
+    level: 'Level',
+    none: 'None',
+    primary: 'Primary',
+    success: 'Success',
+    info: 'Info'
 }
 
 export default en

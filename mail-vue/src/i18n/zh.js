@@ -337,6 +337,15 @@ const zh = {
     searchUser: '搜索用户',
     searchEmail: '搜索邮箱',
     searchSender: '搜索发件人',
-    userEmail: '用户邮箱'
+    userEmail: '用户邮箱',
+    loggingIn: '登录中...',
+    bindEmailTitle: '注册邮箱',
+    bind: '绑定',
+    bindEmailPrompt: '请注册并绑定一个邮箱',
+    level: '等级',
+    none: '无',
+    primary: '主要',
+    success: '成功',
+    info: '信息'
 }
 export default zh

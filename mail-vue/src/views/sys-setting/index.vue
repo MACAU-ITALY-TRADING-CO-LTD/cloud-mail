@@ -29,9 +29,9 @@
                 <div>
                   <el-select
                       @change="change"
-                      :style="`width: ${ locale === 'en' ?  100 : 80 }px;`"
+                      :style="`width: ${ locale === 'zh' ? 80 : locale === 'it' ? 120 : 100 }px;`"
                       v-model="setting.regKey"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                   >
                     <el-option
                         v-for="item in regKeyOptions"
@@ -151,9 +151,9 @@
                 <div>
                   <el-select
                       @change="change"
-                      :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
+                      :style="`width: ${ locale === 'zh' ? 80 : locale === 'it' ? 120 : 100 }px;`"
                       v-model="setting.autoRefresh"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                   >
                     <el-option
                         v-for="item in authRefreshOptions"
@@ -297,9 +297,9 @@
                   </el-button>
                   <el-select
                       @change="change"
-                      :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
+                      :style="`width: ${ locale === 'zh' ? 80 : locale === 'it' ? 120 : 100 }px;`"
                       v-model="setting.registerVerify"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                       class="bot-verify-select"
                   >
                     <el-option key="1" :value="0" :label="$t('enable')"/>
@@ -316,9 +316,9 @@
                   </el-button>
                   <el-select
                       @change="change"
-                      :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
+                      :style="`width: ${ locale === 'zh' ? 80 : locale === 'it' ? 120 : 100 }px;`"
                       v-model="setting.addEmailVerify"
-                      placeholder="Select"
+                      :placeholder="$t('select')"
                       class="bot-verify-select"
                   >
                     <el-option key="1" :value="0" :label="$t('enable')"/>
@@ -455,7 +455,7 @@
       </el-dialog>
       <el-dialog v-model="resendTokenFormShow" :title="$t('resendToken')" width="340" @closed="cleanResendTokenForm">
         <form>
-          <el-select style="margin-bottom: 15px" v-model="resendTokenForm.domain" placeholder="Select">
+          <el-select style="margin-bottom: 15px" v-model="resendTokenForm.domain" :placeholder="$t('select')">
             <el-option
                 v-for="item in settingStore.domainList"
                 :key="item"
@@ -665,11 +665,11 @@
               <template #prefix>
                 <span style="margin-right: 10px">{{ $t('icon') }}</span>
               </template>
-              <el-option key="none" label="None" value="none"/>
-              <el-option key="primary" label="Primary" value="primary"/>
-              <el-option key="success" label="Success" value="success"/>
-              <el-option key="warning" label="Warning" value="warning"/>
-              <el-option key="info" label="Info" value="info"/>
+              <el-option key="none" :label="$t('none')" value="none"/>
+              <el-option key="primary" :label="$t('primary')" value="primary"/>
+              <el-option key="success" :label="$t('success')" value="success"/>
+              <el-option key="warning" :label="$t('warning')" value="warning"/>
+              <el-option key="info" :label="$t('info')" value="info"/>
             </el-select>
             <el-select v-model="noticeForm.noticePosition">
               <template #prefix>
@@ -942,7 +942,7 @@ const tgMsgText = ref('')
 const tgMsgFromOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}, {label: t('onlyName'), value:'only-name'}]
 const tgMsgToOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
 const tgMsgTextOption = [{label: t('show'), value: 'show'}, {label: t('hide'), value: 'hide'}]
-const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px');
+const tgMsgLabelWidth = computed(() => locale.value === 'zh' ? '100px' : locale.value === 'it' ? '150px' : '120px');
 
 getSettings()
 getUpdate()

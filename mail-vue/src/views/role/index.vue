@@ -119,7 +119,7 @@
                 <el-input-number v-if="form.sendType === 'day' || form.sendType === 'count'" v-model="form.sendCount" controls-position="right" :min="0" :max="99999" size="small"
                                  :placeholder="$t('total')">
                 </el-input-number>
-                  <el-select v-model="form.sendType" placeholder="Select" size="small"
+                  <el-select v-model="form.sendType" :placeholder="$t('select')" size="small"
                              :style="`width: ${ locale === 'zh' ? 65 : 85 }px;margin-left: 5px;`">
                     <el-option :label="$t('total')" value="count"/>
                     <el-option :label="$t('daily')" value="day"/>
@@ -400,7 +400,7 @@ function getRoleList() {
 
 function adjustWidth() {
   desShow.value = window.innerWidth > 767
-  settingWidth.value = window.innerWidth < 480 ? (locale.value === 'en' ? 85 : 75) : null
+  settingWidth.value = window.innerWidth < 480 ? (locale.value === 'zh' ? 75 : 85) : null
   sortWidth.value = window.innerWidth < 480 ? 75 : null
   roleWidth.value = window.innerWidth < 480 ? 180 : 200
 }
