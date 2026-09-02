@@ -38,7 +38,7 @@
           :placeholder="$t('select')"
           @change="changeLang"
       >
-        <el-option label="中文" value="zh" @pointerdown.prevent.stop="changeLang('zh')"/>
+        <el-option label="繁體中文（香港）" value="zh" @pointerdown.prevent.stop="changeLang('zh')"/>
         <el-option label="English" value="en" @pointerdown.prevent.stop="changeLang('en')"/>
         <el-option label="Italiano" value="it" @pointerdown.prevent.stop="changeLang('it')"/>
       </el-select>
@@ -283,7 +283,7 @@ function submitPwd() {
     margin-bottom: 40px;
 
     .language-select {
-      width: 100px;
+      width: 180px;
     }
   }
 
