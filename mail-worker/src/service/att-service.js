@@ -50,8 +50,7 @@ const attService = {
 	async download(c, attId, userId, allowAnyUser = false) {
 		const filters = [
 			eq(att.attId, attId),
-			eq(att.type, attConst.type.ATT),
-			isNull(att.contentId)
+			eq(att.type, attConst.type.ATT)
 		];
 
 		if (!allowAnyUser) {
