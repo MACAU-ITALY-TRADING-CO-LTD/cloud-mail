@@ -8,6 +8,34 @@ const fileUtils = {
 		}
 	},
 
+	attachmentFilename(attachment) {
+		if (typeof attachment.filename === 'string' && attachment.filename.trim()) {
+			return attachment.filename;
+		}
+
+		const mimeType = attachment.mimeType || attachment.contentType || attachment.type || '';
+		const extensions = {
+			'image/jpeg': 'jpg',
+			'image/png': 'png',
+			'image/gif': 'gif',
+			'image/webp': 'webp',
+			'image/svg+xml': 'svg',
+			'application/pdf': 'pdf',
+			'text/plain': 'txt'
+		};
+		const extension = extensions[String(mimeType).split(';')[0].toLowerCase()]
+			|| (typeof attachment.key === 'string' && attachment.key.match(/\.([a-z0-9]{1,10})$/i)?.[1])
+			|| 'bin';
+		const hash = typeof attachment.key === 'string'
+			? attachment.key.match(/[a-f0-9]{32}/i)?.[0]
+			: null;
+		const contentId = typeof attachment.contentId === 'string'
+			? attachment.contentId.replace(/[<>]/g, '').replace(/[^a-z0-9_-]/gi, '').slice(0, 64)
+			: '';
+
+		return `attachment-${hash || contentId || 'unnamed'}.${extension}`;
+	},
+
 	contentDisposition(filename, disposition = 'attachment') {
 		const originalName = String(filename || 'attachment');
 		const asciiName = originalName

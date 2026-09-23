@@ -25,6 +25,9 @@ vi.mock('../src/entity/orm', () => ({
 					state.filters = filters;
 
 					return {
+						orderBy: () => ({
+							groupBy: () => ({ all: async () => [state.attachment] })
+						}),
 						get: async () => {
 							const row = state.attachment;
 							if (!row) return null;
@@ -56,6 +59,10 @@ vi.mock('../src/service/r2-service', () => ({
 	default: {
 		getObj: vi.fn(async () => state.object)
 	}
+}));
+
+vi.mock('../src/service/setting-service', () => ({
+	default: { query: vi.fn(async () => ({ r2Domain: 'files.example.com' })) }
 }));
 
 import attService from '../src/service/att-service';
@@ -108,5 +115,28 @@ describe('attService.download', () => {
 		state.object = null;
 
 		await expect(attService.download({}, 146, 6)).resolves.toBeNull();
+	});
+});
+
+describe('attService.toImageUrlHtml', () => {
+	it('recovers a filename for a quoted inline image from an older message', async () => {
+		state.attachment = {
+			key: 'attachments/0123456789abcdef0123456789abcdef',
+			filename: null,
+			mimeType: 'image/png',
+			size: 3
+		};
+		state.object = {
+			arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer
+		};
+
+		const result = await attService.toImageUrlHtml({},
+			'<img src="https://files.example.com/attachments/0123456789abcdef0123456789abcdef">');
+
+		expect(result.imageDataList).toHaveLength(1);
+		expect(result.imageDataList[0].filename)
+			.toBe('attachment-0123456789abcdef0123456789abcdef.png');
+		expect(result.imageDataList[0].content).toBeInstanceOf(ArrayBuffer);
+		expect(result.html).toContain('cid:');
 	});
 });

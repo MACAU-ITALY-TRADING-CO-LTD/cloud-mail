@@ -153,7 +153,7 @@ const attService = {
 			}
 
 			image.size = dbImage.size;
-			image.filename = dbImage.filename;
+			image.filename = fileUtils.attachmentFilename(dbImage);
 			image.mimeType = dbImage.mimeType;
 			image.contentType = dbImage.mimeType;
 

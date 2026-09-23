@@ -1,6 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import fileUtils from '../src/utils/file-utils';
 
+describe('fileUtils.attachmentFilename', () => {
+	it('preserves a supplied filename', () => {
+		expect(fileUtils.attachmentFilename({ filename: 'Preventivo Macao.pdf', mimeType: 'application/pdf' }))
+			.toBe('Preventivo Macao.pdf');
+	});
+
+	it('names a historical inline image with no filename using its MIME type and key', () => {
+		expect(fileUtils.attachmentFilename({
+			filename: null,
+			mimeType: 'image/png',
+			key: 'attachments/0123456789abcdef0123456789abcdef'
+		})).toBe('attachment-0123456789abcdef0123456789abcdef.png');
+	});
+
+	it('gives an unnamed attachment a string even without metadata', () => {
+		expect(fileUtils.attachmentFilename({ filename: null })).toBe('attachment-unnamed.bin');
+	});
+});
+
 describe('fileUtils.contentDisposition', () => {
 	it('preserves a safe ASCII filename', () => {
 		expect(fileUtils.contentDisposition('report.pdf')).toBe(

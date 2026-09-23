@@ -163,6 +163,10 @@ const emailService = {
 			subject, //邮件标题
 			attachments = [] //附件
 		} = params;
+		attachments = attachments.map(attachment => ({
+			...attachment,
+			filename: fileUtils.attachmentFilename(attachment)
+		}));
 
 		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
 
@@ -439,7 +443,7 @@ const emailService = {
 		return arrayBufferAttachments.map(attachment => {
 			const item = {
 				content: attachment.content,
-				filename: attachment.filename,
+				filename: fileUtils.attachmentFilename(attachment),
 				type: attachment.mimeType || attachment.contentType || attachment.type || 'application/octet-stream',
 				disposition: attachment.contentId ? 'inline' : 'attachment'
 			};
@@ -463,6 +467,7 @@ const emailService = {
 
 			result.push({
 				...attachment,
+				filename: fileUtils.attachmentFilename(attachment),
 				content,
 				contentType: attachment.contentType || attachment.mimeType || attachment.type || 'application/octet-stream'
 			});
