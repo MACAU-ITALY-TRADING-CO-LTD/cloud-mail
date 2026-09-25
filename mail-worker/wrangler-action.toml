@@ -32,7 +32,7 @@ not_found_handling = "single-page-application"
 run_worker_first = true
 
 [triggers]
-crons = ["*/30 * * * *", "0 16 * * *"]
+crons = ["*/5 * * * *", "*/30 * * * *", "0 16 * * *"]
 
 
 [vars]
@@ -41,6 +41,8 @@ analysis_cache = "${ANALYSIS_CACHE}"
 #orm_log = false
 domain = "${DOMAIN}"
 admin = "${ADMIN}"
+oversize_alert_admin = "admin@mitcoasia.com"
+email_routing_zone_id = "2df6eecf617a8fd69a03032e1066d806"
 jwt_secret = "${JWT_SECRET}"
 project_link = "${PROJECT_LINK}"
 
