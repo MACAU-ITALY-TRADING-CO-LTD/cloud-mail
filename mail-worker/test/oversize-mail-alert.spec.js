@@ -103,6 +103,18 @@ describe('oversized incoming mail alerts', () => {
     expect(isOversizeEvent(event({ errorDetail: 'worker script exceeded CPU allocation' }))).toBe(false);
   });
 
+  it('shows UTC, Italian daylight time, and Macao time without Cloudflare branding', () => {
+    const notice = formatOversizeNotice(event({ datetime: '2026-09-25T08:27:59Z' }));
+    expect(notice.text).toContain('2026-09-25 08:27:59 UTC');
+    expect(notice.text).toContain('2026-09-25 10:27:59 (ora italiana, CEST)');
+    expect(notice.text).toContain('2026-09-25 16:27:59（澳門時間，UTC+8）');
+    expect(notice.text).toContain('MITCO Mail');
+    expect(notice.text).not.toContain('Cloudflare');
+    const winter = formatOversizeNotice(event({ datetime: '2026-12-25T08:27:59Z' }));
+    expect(winter.text).toContain('2026-12-25 09:27:59 (ora italiana, CET)');
+    expect(winter.text).toContain('2026-12-25 16:27:59（澳門時間，UTC+8）');
+  });
+
   it('fails before recording an event if the administrator mailbox is unavailable', async () => {
     database.sqlite.exec('DELETE FROM account WHERE account_id = 1');
     await expect(checkOversizeMail(env, { now: NOW, fetchImpl: routingResponse([event()]) })).rejects.toThrow('administrator account is missing');

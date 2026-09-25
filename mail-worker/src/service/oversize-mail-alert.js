@@ -26,6 +26,20 @@ function escapeHtml(value) {
   })[char]);
 }
 
+function localDateTime(date, timeZone) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).formatToParts(date);
+  const fields = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${fields.year}-${fields.month}-${fields.day} ${fields.hour}:${fields.minute}:${fields.second}`;
+}
+
+function italyZoneName(date) {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', timeZoneName: 'short' })
+    .formatToParts(date).find(part => part.type === 'timeZoneName').value;
+}
+
 export function isOversizeEvent(event) {
   return event?.status === 'error'
     && typeof event.errorDetail === 'string'
@@ -42,20 +56,23 @@ export function isOversizeEvent(event) {
 export function formatOversizeNotice(event) {
   const sender = event.from.trim();
   const recipient = event.to.trim().toLowerCase();
-  const time = new Date(event.datetime).toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+  const date = new Date(event.datetime);
+  const utcTime = `${date.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
+  const italyTime = `${localDateTime(date, 'Europe/Rome')} (ora italiana, ${italyZoneName(date)})`;
+  const macauTime = `${localDateTime(date, 'Asia/Macau')}（澳門時間，UTC+8）`;
   const id = event.sessionId;
   const subject = 'Undelivered email: over 25 MiB / Email non recapitata / 電郵過大未送達';
   const text = [
     'ENGLISH',
-    `An email from ${sender} to ${recipient} was rejected on ${time} because its total size, including attachments, exceeded Cloudflare's 25 MiB incoming email limit. The email and attachments did not reach your inbox. Other email services also have size limits; this is not a problem with your individual mailbox. Please ask the sender to send smaller files or share a download link.`,
+    `An email from ${sender} to ${recipient} was rejected on ${utcTime} because its total size, including attachments, exceeded MITCO Mail's 25 MiB incoming email limit. The email and attachments did not reach your inbox. Other email services also have size limits; this is not a problem with your individual mailbox. Please ask the sender to send smaller files or share a download link.`,
     '',
     'ITALIANO',
-    `Un'email da ${sender} a ${recipient} è stata rifiutata il ${time} perché le dimensioni totali, allegati inclusi, superavano il limite di 25 MiB per le email in arrivo di Cloudflare. Il messaggio e gli allegati non sono arrivati nella casella di posta. Anche altri servizi email hanno limiti di dimensione: non è un problema della tua casella personale. Chiedi al mittente di inviare file più piccoli o un link per scaricarli.`,
+    `Un'email da ${sender} a ${recipient} è stata rifiutata il ${italyTime} perché le dimensioni totali, allegati inclusi, superavano il limite di 25 MiB per le email in arrivo di MITCO Mail. Il messaggio e gli allegati non sono arrivati nella casella di posta. Anche altri servizi email hanno limiti di dimensione: non è un problema della tua casella personale. Chiedi al mittente di inviare file più piccoli o un link per scaricarli.`,
     '',
-    '繁體中文',
-    `${sender} 寄給 ${recipient} 的電郵於 ${time} 遭拒收，原因是電郵連附件的總大小超過 Cloudflare 的 25 MiB 收件上限。該電郵及附件沒有進入你的收件箱。其他電郵服務亦有大小上限，這並非你的個人郵箱故障。請發件人縮小檔案，或改以下載連結分享。`,
+    '繁體中文（澳門）',
+    `${sender} 寄給 ${recipient} 的電郵於 ${macauTime}遭拒收，原因是電郵連附件的總大小超過 MITCO Mail 的 25 MiB 收件上限。該電郵及附件沒有進入你的收件匣。其他電郵服務亦有大小上限，這並非你的個人郵箱故障。請發件人縮小檔案，或改以下載連結分享。`,
     '',
-    `Cloudflare event ID / ID evento / 事件編號：${id}`,
+    `MITCO Mail event ID / ID evento / 事件編號：${id}`,
     'The original email content and exact size are unavailable because it was rejected before delivery.',
     'Il contenuto originale e la dimensione esatta non sono disponibili perché il messaggio è stato rifiutato prima della consegna.',
     '由於郵件在投遞前已遭拒收，我們無法查看原文或確切大小。'
