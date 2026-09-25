@@ -65,6 +65,10 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: ./mail-worker
 
+      - name: 🧪 Run mail Worker unit tests
+        working-directory: ./mail-worker
+        run: pnpm exec vitest run --config vitest.unit.config.js
+
       - name: 📡 禁用 Wrangler 遥测 / Disable wrangler telemetry
         working-directory: ./mail-worker
         run: pnpm wrangler telemetry disable
