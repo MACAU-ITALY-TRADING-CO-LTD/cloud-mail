@@ -26,6 +26,7 @@ jobs:
       ADMIN: ${{ secrets.ADMIN || vars.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET || vars.JWT_SECRET }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || vars.CLOUDFLARE_API_TOKEN }}
+      EMAIL_ROUTING_ANALYTICS_TOKEN: ${{ secrets.EMAIL_ROUTING_ANALYTICS_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
       D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID || vars.D1_DATABASE_ID }}
       KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID || vars.KV_NAMESPACE_ID }}
@@ -64,6 +65,10 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: ./mail-worker
 
+      - name: 🧪 Run mail Worker unit tests
+        working-directory: ./mail-worker
+        run: pnpm exec vitest run --config vitest.unit.config.js
+
       - name: 📡 禁用 Wrangler 遥测 / Disable wrangler telemetry
         working-directory: ./mail-worker
         run: pnpm wrangler telemetry disable
@@ -96,6 +101,11 @@ jobs:
           
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
             echo "❌ CLOUDFLARE_API_TOKEN variable cannot be empty."
+            exit 1
+          fi
+
+          if [ -z "$EMAIL_ROUTING_ANALYTICS_TOKEN" ]; then
+            echo "❌ EMAIL_ROUTING_ANALYTICS_TOKEN secret is required for oversized mail alerts."
             exit 1
           fi
           
@@ -221,6 +231,10 @@ jobs:
           sed -i "s|\${D1_DATABASE_ID}|$D1_ID|g" "$CONFIG_FILE"
           echo "✅ Setup completed."
 
+      - name: 🗃️ Create oversized mail alert tables
+        working-directory: ./mail-worker
+        run: pnpm wrangler d1 execute db --remote -c wrangler-action.toml --file migrations/20260925_oversize_mail_alert.sql
+
       - name: 🚀 开始部署 / Start deployment
         id: deploy
         working-directory: ./mail-worker
@@ -245,6 +259,10 @@ jobs:
           
           echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
           echo "✅ Setup completed."
+
+      - name: 🔐 Set Email Routing analytics read token
+        working-directory: ./mail-worker
+        run: printf '%s' "$EMAIL_ROUTING_ANALYTICS_TOKEN" | pnpm wrangler secret put email_routing_analytics_token -c wrangler-action.toml
 
       - name: ♻️ 初始化数据库 / Initialize database
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_database_init }}
