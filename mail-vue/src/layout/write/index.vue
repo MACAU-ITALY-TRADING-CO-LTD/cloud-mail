@@ -67,6 +67,7 @@
             <el-button type="primary" @click="sendEmail" v-else>{{ $t('send') }}</el-button>
           </div>
         </div>
+        <p class="attachment-hint">{{ $t('largeAttachmentHint') }}</p>
       </div>
     </div>
     <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')">
@@ -102,6 +103,7 @@ import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
+import {isOversizedSendError} from "@/utils/send-error.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
 import {toOssDomain} from "@/utils/convert.js";
@@ -114,6 +116,7 @@ import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
+import 'element-plus/es/components/message-box/style/css';
 
 defineExpose({
   open,
@@ -380,17 +383,29 @@ async function sendEmail() {
     show.value = false
     resetForm();
   }).catch((e) => {
-    ElNotification({
-      title: t('sendFailMsg'),
-      type: e.code === 403 ? 'warning' : 'error',
-      message: h('span', {style: 'color: teal'}, e.message),
-      position: 'bottom-right'
-    })
+    show.value = true
+    if (isOversizedSendError(e)) {
+      ElMessageBox.alert(
+        h('div', {style: 'white-space: pre-line; line-height: 1.6'}, t('sendTooLargeMsg')),
+        t('sendTooLargeTitle'),
+        {
+          type: 'warning',
+          confirmButtonText: t('backToEmail'),
+          customClass: 'send-size-error',
+        }
+      ).catch(() => {})
+    } else {
+      ElNotification({
+        title: t('sendFailMsg'),
+        type: e.code === 403 ? 'warning' : 'error',
+        message: h('span', {style: 'color: teal'}, e.message),
+        position: 'bottom-right'
+      })
+    }
     if (e.code === 401) {
       localStorage.removeItem('token');
       router.replace('/login');
     }
-    show.value = true
     addRecipientRecord();
   }).finally(() => {
     percentMessage.close()
@@ -605,6 +620,11 @@ function close() {
 
 </script>
 <style>
+.send-size-error {
+  width: min(480px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+
 .write-select .el-select-dropdown__list {
   padding: 4px 4px !important;
 }
@@ -691,8 +711,15 @@ function close() {
     .container {
       height: 100%;
       display: grid;
-      grid-template-rows: auto auto 1fr auto;
+      grid-template-rows: auto auto 1fr auto auto;
       gap: 15px;
+
+      .attachment-hint {
+        margin: 0;
+        color: var(--el-text-color-regular);
+        font-size: 13px;
+        line-height: 1.5;
+      }
 
       .item-title {
       }
