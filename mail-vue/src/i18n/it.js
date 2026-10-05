@@ -191,6 +191,8 @@ const it = {
     subjectInputDesc: "Inserisci l'oggetto dell'email",
     changeUserName: 'Cambia nome utente',
     send: 'Invia',
+    replyAll: 'Rispondi a tutti',
+    cc: 'Cc',
     reply: 'Rispondi',
     forward: 'Inoltra',
     confirm: 'Conferma',
