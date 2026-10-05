@@ -67,7 +67,14 @@
             <el-button type="primary" @click="sendEmail" v-else>{{ $t('send') }}</el-button>
           </div>
         </div>
-        <p class="attachment-hint">{{ $t('largeAttachmentHint') }}</p>
+        <Translation keypath="largeAttachmentHint" scope="global" tag="p" class="attachment-hint">
+          <template #wetransfer>
+            <a :href="fileSharingSites.wetransfer.href" target="_blank" rel="noopener noreferrer">WeTransfer</a>
+          </template>
+          <template #googleDrive>
+            <a :href="fileSharingSites.googleDrive.href" target="_blank" rel="noopener noreferrer">Google Drive</a>
+          </template>
+        </Translation>
       </div>
     </div>
     <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')">
@@ -95,7 +102,7 @@
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
+import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, getCurrentInstance} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend} from "@/request/email.js";
@@ -113,7 +120,7 @@ import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
 import db from "@/db/db.js";
 import dayjs from "dayjs";
-import {useI18n} from "vue-i18n";
+import {useI18n, Translation} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
 import 'element-plus/es/components/message-box/style/css';
@@ -126,6 +133,11 @@ defineExpose({
 })
 
 const {t} = useI18n()
+const appContext = getCurrentInstance().appContext;
+const fileSharingSites = {
+  wetransfer: { label: 'WeTransfer', href: 'https://wetransfer.com/' },
+  googleDrive: { label: 'Google Drive', href: 'https://drive.google.com/' },
+};
 const writerStore = useWriterStore();
 const draftStore = userDraftStore()
 const settingStore = useSettingStore()
@@ -386,13 +398,21 @@ async function sendEmail() {
     show.value = true
     if (isOversizedSendError(e)) {
       ElMessageBox.alert(
-        h('div', {style: 'white-space: pre-line; line-height: 1.6'}, t('sendTooLargeMsg')),
+        h(Translation, {
+          keypath: 'sendTooLargeMsg',
+          scope: 'global',
+          tag: 'div',
+          style: 'white-space: pre-line; line-height: 1.6',
+        }, Object.fromEntries(Object.entries(fileSharingSites).map(([key, site]) => [
+          key, () => h('a', {href: site.href, target: '_blank', rel: 'noopener noreferrer'}, site.label)
+        ]))),
         t('sendTooLargeTitle'),
         {
           type: 'warning',
           confirmButtonText: t('backToEmail'),
           customClass: 'send-size-error',
-        }
+        },
+        appContext
       ).catch(() => {})
     } else {
       ElNotification({
@@ -625,6 +645,11 @@ function close() {
   max-width: calc(100vw - 32px);
 }
 
+.send-size-error a {
+  color: var(--el-color-primary);
+  text-decoration: underline;
+}
+
 .write-select .el-select-dropdown__list {
   padding: 4px 4px !important;
 }
@@ -719,6 +744,11 @@ function close() {
         color: var(--el-text-color-regular);
         font-size: 13px;
         line-height: 1.5;
+
+        a {
+          color: var(--el-color-primary);
+          text-decoration: underline;
+        }
       }
 
       .item-title {
