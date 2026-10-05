@@ -14,8 +14,8 @@
           <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
         </div>
       </div>
-      <div class="container">
-        <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" >
+      <div class="container" :class="{'has-cc': showCc || form.cc.length}">
+        <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" :aria-label="t('recipient')" data-testid="compose-to" >
           <template #prefix>
             <div class="item-title" >{{ $t('recipient') }}</div>
             <el-select
@@ -39,9 +39,13 @@
           </template>
           <template #suffix>
             <div style="display: flex;margin-right: 3px;">
+              <el-button v-if="!showCc && !form.cc.length" text size="small" @click.stop="showCc = true">{{ t('cc') }}</el-button>
               <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
             </div>
           </template>
+        </el-input-tag>
+        <el-input-tag v-if="showCc || form.cc.length" v-model="form.cc" @add-tag="value => addTagChange(value, 'cc')" :aria-label="t('cc')" data-testid="compose-cc">
+          <template #prefix><div class="item-title">{{ t('cc') }}</div></template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
         <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
@@ -62,7 +66,7 @@
             </div>
           </div>
           <div>
-            <el-button type="primary" @click="sendEmail" v-if="form.sendType === 'reply'">{{ $t('reply') }}</el-button>
+            <el-button type="primary" @click="sendEmail" v-if="form.sendType === 'reply'">{{ t(form.replyAll ? 'replyAll' : 'reply') }}</el-button>
             <el-button type="primary" @click="sendEmail" v-else-if="form.sendType === 'forward'">{{ $t('forward') }}</el-button>
             <el-button type="primary" @click="sendEmail" v-else>{{ $t('send') }}</el-button>
           </div>
@@ -110,6 +114,7 @@ import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
+import {replyRecipients} from '@/utils/recipients.js';
 import {isOversizedSendError} from "@/utils/send-error.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
@@ -146,6 +151,7 @@ const accountStore = useAccountStore()
 const editor = ref({})
 const userStore = useUserStore();
 const show = ref(false);
+const showCc = ref(false);
 const percent = ref(0)
 let percentMessage = null
 let sending = false
@@ -156,6 +162,7 @@ const mySelect = ref()
 let selectStatus = false
 const backReply = reactive({
   receiveEmail: [],
+  cc: [],
   subject: '',
   content: '',
   sendType: ''
@@ -163,6 +170,7 @@ const backReply = reactive({
 const form = reactive({
   sendEmail: '',
   receiveEmail: [],
+  cc: [],
   accountId: -1,
   name: '',
   subject: '',
@@ -172,6 +180,7 @@ const form = reactive({
   emailId: 0,
   attachments: [],
   draftId: null,
+  replyAll: false,
 })
 
 const selectRecipientList = ref([])
@@ -247,22 +256,22 @@ function inputChange(value) {
 
 }
 
-function addTagChange(val) {
+function addTagChange(val, field = 'receiveEmail') {
 
   const emails = Array.from(new Set(
       val.split(/[,，]/).map(item => item.trim()).filter(item => item)
   ));
 
-  form.receiveEmail.splice(form.receiveEmail.length - 1, 1)
+  form[field].splice(form[field].length - 1, 1)
 
   let has = false
   emails.forEach(email => {
-    if (isEmail(email) && !form.receiveEmail.includes(email)) {
-      form.receiveEmail.push(email)
+    if (isEmail(email) && ![...form.receiveEmail, ...form.cc].some(item => item.toLowerCase() === email.toLowerCase())) {
+      form[field].push(email)
       has = true
     }
   })
-  if (selectStatus && has) openSelect()
+  if (field === 'receiveEmail' && selectStatus && has) openSelect()
 }
 
 function clearContent() {
@@ -389,6 +398,7 @@ async function sendEmail() {
       form.subject = ''
       form.content = ''
       form.receiveEmail = []
+      form.cc = []
       draftStore.setDraft = {...toRaw(form)}
     }
 
@@ -445,6 +455,9 @@ function addRecipientRecord() {
 
 function resetForm() {
   form.receiveEmail = []
+  form.cc = []
+  showCc.value = false
+  form.replyAll = false
   form.subject = ''
   form.content = ''
   form.manyType = null
@@ -455,6 +468,7 @@ function resetForm() {
   backReply.content = ''
   backReply.subject = ''
   backReply.receiveEmail = []
+  backReply.cc = []
   backReply.sendType = ''
   editor.value.clearEditor()
 }
@@ -487,20 +501,25 @@ function openForward(email) {
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
+      backReply.receiveEmail = [...form.receiveEmail]
+      backReply.cc = [...form.cc]
       backReply.sendType = form.sendType
     })
 
   });
 }
 
-function openReply(email) {
+function openReply(email, all = false) {
 
   resetForm();
 
   email.subject = email.subject || ''
 
-  form.receiveEmail.push(email.sendEmail)
+  const recipients = replyRecipients(email, [email.toEmail, accountStore.currentAccount.email, userStore.user.email], all)
+  form.receiveEmail = recipients.to
+  form.cc = recipients.cc
+  showCc.value = form.cc.length > 0
+  form.replyAll = all
   form.subject = (
       email.subject.startsWith('Re:') ||
       email.subject.startsWith('Re：') ||
@@ -528,7 +547,8 @@ function openReply(email) {
     nextTick(() => {
       backReply.content = editor.value.getContent()
       backReply.subject = form.subject
-      backReply.receiveEmail = form.receiveEmail
+      backReply.receiveEmail = [...form.receiveEmail]
+      backReply.cc = [...form.cc]
       backReply.sendType = form.sendType
     })
   })
@@ -556,7 +576,9 @@ function open() {
 }
 
 function openDraft(draft) {
-  Object.assign(form, {...draft})
+  resetForm()
+  Object.assign(form, {...draft, cc: [...(draft.cc || [])]})
+  showCc.value = form.cc.length > 0
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
@@ -592,7 +614,7 @@ function close() {
     return;
   }
 
-  if (!(form.content || form.subject || form.receiveEmail.length > 0)) {
+  if (!(form.content || form.subject || form.receiveEmail.length > 0 || form.cc.length > 0)) {
     show.value = false
     resetForm()
     return;
@@ -601,8 +623,9 @@ function close() {
   if (backReply.sendType === 'reply' || backReply.sendType === 'forward') {
     let subjectFlag = form.subject === backReply.subject
     let contentFlag = editor.value.getContent() === backReply.content
-    let receiveFlag = form.receiveEmail.length === 1 && form.receiveEmail[0] === backReply.receiveEmail[0]
-    if (backReply.sendType === 'forward' && form.receiveEmail.length === 0) {
+    let receiveFlag = JSON.stringify(form.receiveEmail) === JSON.stringify(backReply.receiveEmail)
+        && JSON.stringify(form.cc) === JSON.stringify(backReply.cc)
+    if (backReply.sendType === 'forward' && form.receiveEmail.length === 0 && form.cc.length === 0) {
       receiveFlag = true;
     }
     if (subjectFlag && contentFlag && receiveFlag) {
@@ -737,6 +760,9 @@ function close() {
       height: 100%;
       display: grid;
       grid-template-rows: auto auto 1fr auto auto;
+      &.has-cc {
+        grid-template-rows: auto auto auto 1fr auto auto;
+      }
       gap: 15px;
 
       .attachment-hint {

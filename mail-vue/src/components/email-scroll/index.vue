@@ -179,6 +179,9 @@
               </div>
             </template>
           </el-dropdown-item>
+          <el-dropdown-item v-if="['email','star'].includes(props.type) && (parseAddresses(rightClickEmail.cc).length || parseAddresses(rightClickEmail.recipient).length > 1)" @click="openReplyAll(rightClickEmail)">
+            <div class="right-dropdown-item"><Icon icon="la:reply-all" width="20" height="20" /><span>{{ t('replyAll') }}</span></div>
+          </el-dropdown-item>
           <el-dropdown-item v-if="['email','send', 'star'].includes(props.type)" @click="openForward(rightClickEmail)">
             <template #default>
               <div class="right-dropdown-item">
@@ -234,6 +237,7 @@
 </template>
 
 <script setup>
+import {parseAddresses} from '@/utils/recipients.js';
 import {Icon} from "@iconify/vue";
 import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
 import {computed, onActivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
@@ -485,6 +489,10 @@ window.addEventListener('wheel', (event) => {
     dropdownRef.value.handleClose();
   }
 })
+
+function openReplyAll(email) {
+  uiStore.writerRef.openReply(email, true)
+}
 
 function openReply(email) {
   uiStore.writerRef.openReply(email)

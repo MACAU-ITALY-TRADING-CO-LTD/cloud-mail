@@ -7,7 +7,12 @@
         <Icon class="icon" @click="changeStar" v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
         <Icon class="icon" @click="changeStar" v-else icon="solar:star-line-duotone" width="18" height="18"/>
       </span>
-      <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
+      <el-button v-if="emailStore.contentData.showReply" v-perm="'email:send'" text @click="openReply" :aria-label="t('reply')">
+        <Icon icon="la:reply" width="20" height="20" /><span>{{ t('reply') }}</span>
+      </el-button>
+      <el-button v-if="emailStore.contentData.showReply && hasReplyAll" v-perm="'email:send'" text @click="openReplyAll" :aria-label="t('replyAll')">
+        <Icon icon="la:reply-all" width="20" height="20" /><span>{{ t('replyAll') }}</span>
+      </el-button>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
     </div>
     <div></div>
@@ -25,7 +30,8 @@
                   <span><{{ email.sendEmail }}></span>
                 </div>
               </div>
-              <div class="receive"><span class="source">{{$t('recipient')}}</span><span class="receive-email">{{  formateReceive(email.recipient) }}</span></div>
+              <div class="receive"><span class="source">{{$t('recipient')}}</span><span class="receive-email">{{  formatRecipients(email.recipient) }}</span></div>
+              <div class="receive" v-if="parseAddresses(email.cc).length"><span class="source">{{ t('cc') }}</span><span class="receive-email">{{ formatRecipients(email.cc) }}</span></div>
               <div class="date">
                 <div>{{ formatDetailDate(email.createTime) }}</div>
               </div>
@@ -85,8 +91,10 @@
   </div>
 </template>
 <script setup>
+import {parseAddresses, replyRecipients} from '@/utils/recipients.js'
+import {useUserStore} from '@/store/user.js'
 import ShadowHtml from '@/components/shadow-html/index.vue'
-import {reactive, ref, watch, onMounted, onUnmounted} from "vue";
+import {reactive, ref, watch, onMounted, onUnmounted, computed} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead} from "@/request/email.js";
@@ -115,6 +123,11 @@ const srcList = reactive([])
 const downloadingAttId = ref(null)
 
 const { t } = useI18n()
+const userStore = useUserStore();
+const hasReplyAll = computed(() => {
+  const recipients = replyRecipients(email, [email.toEmail, accountStore.currentAccount.email, userStore.user.email], true);
+  return recipients.cc.length > 0 || recipients.to.some(address => address.toLowerCase() !== email.sendEmail?.toLowerCase());
+});
 watch(() => accountStore.currentAccountId, () => {
   handleBack()
 })
@@ -132,6 +145,10 @@ onUnmounted(() => {
 
 function openReply() {
   uiStore.writerRef.openReply(email)
+}
+
+function openReplyAll() {
+  uiStore.writerRef.openReply(email, true)
 }
 
 function openForward() {
@@ -207,9 +224,8 @@ async function downloadAttachment(att) {
   }
 }
 
-function formateReceive(recipient) {
-  recipient = JSON.parse(recipient)
-  return recipient.map(item => item.address).join(', ')
+function formatRecipients(value) {
+  return parseAddresses(value).map(item => item.name ? `${item.name} <${item.address}>` : item.address).join(', ')
 }
 
 function changeStar() {
@@ -283,7 +299,7 @@ const handleDelete = () => {
   padding: 9px 15px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 8px;
   box-shadow: var(--header-actions-border);
   font-size: 18px;
   .star {

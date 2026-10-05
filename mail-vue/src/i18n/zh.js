@@ -191,6 +191,8 @@ const zh = {
     subjectInputDesc: '請輸入電郵主旨',
     changeUserName: '更改使用者名稱',
     send: '傳送',
+    replyAll: '回覆全部',
+    cc: '抄送',
     reply: '回覆',
     forward: '轉寄',
     confirm: '確認',

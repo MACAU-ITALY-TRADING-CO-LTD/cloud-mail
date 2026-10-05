@@ -191,6 +191,8 @@ const en = {
     subjectInputDesc: 'Please enter the email subject',
     changeUserName: 'Change Username',
     send: 'Send',
+    replyAll: 'Reply all',
+    cc: 'Cc',
     reply: 'Reply',
     forward: 'Forward',
     confirm: 'Confirm',
