@@ -112,6 +112,8 @@ function initEditor() {
     language: language.value,
     language_load: true,
     menubar: false,
+    // Keep the browser's native copy/paste menu available in the message body.
+    contextmenu: false,
     license_key: 'gpl',
     noneditable_class: 'mceNonEditable',
     setup: (ed) => {
