@@ -26,17 +26,29 @@ export function replyRecipients(email, ownAddresses = [], replyAll = false) {
   };
 }
 
-const EMAIL_PATTERN = /[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/g;
+const EMAIL_PATTERN = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
 
 // Pulls addresses out of pasted text such as `Name <a@x.com>; b@y.com` or `mailto:c@z.com`.
 export function extractEmails(value) {
-  const text = String(value ?? '').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/g, '');
+  const text = String(value ?? '').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    // Only the URI's address part belongs in this field, not addresses in its query.
+    .replace(/mailto:([^\s<>"]+)/gi, (_, uri) => {
+      try {
+        return decodeURIComponent(uri.split(/[?#]/, 1)[0]);
+      } catch {
+        return '';
+      }
+    });
   const seen = new Set();
-  return (text.match(EMAIL_PATTERN) || [])
-    .map(email => email.replace(/^['`.]+/, ''))
+  // Validate complete tokens so malformed addresses cannot become different recipients.
+  return (text.match(/[^\s<>()[\]",;:]+/g) || [])
+    .map(token => {
+      const email = token.replace(/\.$/, '');
+      return /^(['`]).*\1$/.test(email) ? email.slice(1, -1) : email;
+    })
     .filter(email => {
       const key = email.toLowerCase();
-      if (!email.includes('@') || email.startsWith('@') || seen.has(key)) return false;
+      if (!EMAIL_PATTERN.test(email) || seen.has(key)) return false;
       seen.add(key);
       return true;
     });

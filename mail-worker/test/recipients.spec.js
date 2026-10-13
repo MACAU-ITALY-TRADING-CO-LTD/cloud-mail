@@ -107,11 +107,24 @@ describe('pasted recipient text', () => {
 		['ｊｏｈｎ＠ｅｘａｍｐｌｅ．ｃｏｍ', ['john@example.com']],
 		['first.last+tag@sub.example.co.uk', ['first.last+tag@sub.example.co.uk']],
 		['A@x.com, a@X.com', ['A@x.com']],
+		['mailto:john%40example.com?subject=Ask%20alice@example.org', ['john@example.com']],
+		['mailto:john@example.com?cc=jane@example.org&body=hello@example.net', ['john@example.com']],
+		['MAILTO:john@example.com,jane@example.org?subject=Hello', ['john@example.com', 'jane@example.org']],
+		["o'hara@example.com", ["o'hara@example.com"]],
+		["'sales@example.com", ["'sales@example.com"]],
+		['`john@example.com`', ['john@example.com']],
+		['john@example.com123; Jane <jane@example.org>', ['jane@example.org']],
 	])('extracts %j', (input, expected) => {
 		expect(extractEmails(input)).toEqual(expected);
 	});
 
-	it.each(['', 'John Smith', 'john@', '@example.com', 'john@localhost', undefined])('finds nothing in %j', input => {
+	it.each([
+		'', 'John Smith', 'john@', '@example.com', 'john@localhost', undefined,
+		'john@example.com123', 'john@example.com.invalid123', 'a@x.com@evil.org',
+		'john@example.com.e', 'john@example.com..', '.john@example.com',
+		'john..smith@example.com', 'john@-example.com', 'john@example-.com',
+		'mailto:john%ZZ@example.com?subject=jane@example.org',
+	])('finds nothing in %j', input => {
 		expect(extractEmails(input)).toEqual([]);
 	});
 });
