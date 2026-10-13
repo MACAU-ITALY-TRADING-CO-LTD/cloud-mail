@@ -25,3 +25,19 @@ export function replyRecipients(email, ownAddresses = [], replyAll = false) {
     cc: unique(parseAddresses(email.cc).map(item => item.address)),
   };
 }
+
+const EMAIL_PATTERN = /[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/g;
+
+// Pulls addresses out of pasted text such as `Name <a@x.com>; b@y.com` or `mailto:c@z.com`.
+export function extractEmails(value) {
+  const text = String(value ?? '').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/g, '');
+  const seen = new Set();
+  return (text.match(EMAIL_PATTERN) || [])
+    .map(email => email.replace(/^['`.]+/, ''))
+    .filter(email => {
+      const key = email.toLowerCase();
+      if (!email.includes('@') || email.startsWith('@') || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}

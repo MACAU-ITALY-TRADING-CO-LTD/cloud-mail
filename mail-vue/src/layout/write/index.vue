@@ -110,11 +110,10 @@ import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, get
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend} from "@/request/email.js";
-import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {fileToBase64, formatBytes} from "@/utils/file-utils.js";
-import {replyRecipients} from '@/utils/recipients.js';
+import {extractEmails, replyRecipients} from '@/utils/recipients.js';
 import {isOversizedSendError} from "@/utils/send-error.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import sendPercent from "@/components/send-percent/index.vue"
@@ -258,15 +257,22 @@ function inputChange(value) {
 
 function addTagChange(val, field = 'receiveEmail') {
 
-  const emails = Array.from(new Set(
-      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
-  ));
+  const emails = extractEmails([].concat(val).join(','));
 
   form[field].splice(form[field].length - 1, 1)
 
+  if (!emails.length) {
+    ElMessage({
+      message: t('invalidRecipientMsg'),
+      type: 'warning',
+      plain: true,
+    })
+    return
+  }
+
   let has = false
   emails.forEach(email => {
-    if (isEmail(email) && ![...form.receiveEmail, ...form.cc].some(item => item.toLowerCase() === email.toLowerCase())) {
+    if (![...form.receiveEmail, ...form.cc].some(item => item.toLowerCase() === email.toLowerCase())) {
       form[field].push(email)
       has = true
     }

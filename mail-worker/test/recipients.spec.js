@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { parseAddresses, replyRecipients } from '../../mail-vue/src/utils/recipients';
+import { extractEmails, parseAddresses, replyRecipients } from '../../mail-vue/src/utils/recipients';
 import { normalizeRecipients } from '../src/utils/recipients';
 import emailService from '../src/service/email-service';
 import settingService from '../src/service/setting-service';
@@ -89,4 +89,29 @@ describe('outbound Cc', () => {
       receiveEmail: ['a@example.com'], cc: ['b@example.com'], content: '<p>Test</p>',
     }, 1)).rejects.toThrow();
   });
+});
+
+describe('pasted recipient text', () => {
+	it.each([
+		['john@example.com', ['john@example.com']],
+		[' john@example.com\n', ['john@example.com']],
+		['<john@example.com>', ['john@example.com']],
+		['John Smith <john@example.com>', ['john@example.com']],
+		['"Smith, John" <john@example.com>, Jane <jane@example.org>', ['john@example.com', 'jane@example.org']],
+		['a@x.com; b@y.com；c@z.com', ['a@x.com', 'b@y.com', 'c@z.com']],
+		['a@x.com\nb@y.com\tc@z.com d@w.com', ['a@x.com', 'b@y.com', 'c@z.com', 'd@w.com']],
+		['mailto:john@example.com?subject=Hi', ['john@example.com']],
+		['john@example.com.', ['john@example.com']],
+		["'john@example.com'", ['john@example.com']],
+		['john\u200B@example.com', ['john@example.com']],
+		['ｊｏｈｎ＠ｅｘａｍｐｌｅ．ｃｏｍ', ['john@example.com']],
+		['first.last+tag@sub.example.co.uk', ['first.last+tag@sub.example.co.uk']],
+		['A@x.com, a@X.com', ['A@x.com']],
+	])('extracts %j', (input, expected) => {
+		expect(extractEmails(input)).toEqual(expected);
+	});
+
+	it.each(['', 'John Smith', 'john@', '@example.com', 'john@localhost', undefined])('finds nothing in %j', input => {
+		expect(extractEmails(input)).toEqual([]);
+	});
 });
