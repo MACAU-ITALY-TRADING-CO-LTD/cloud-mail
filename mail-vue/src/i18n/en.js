@@ -240,6 +240,7 @@ const en = {
     logOut: 'Sign out',
     clearContentConfirm: 'Are you sure to clear all content?',
     emptyRecipientMsg: 'Recipient email cannot be empty',
+    invalidRecipientMsg: 'No valid email address found. Please check the recipient',
     emptySubjectMsg: 'Subject cannot be empty',
     emptyContentMsg: 'Content cannot be empty',
     noSeparateSendMsg: 'Separate sending does not support attachments yet',

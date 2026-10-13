@@ -240,6 +240,7 @@ const it = {
     logOut: 'Esci',
     clearContentConfirm: 'Confermi di voler cancellare tutto il contenuto?',
     emptyRecipientMsg: "L'email del destinatario non può essere vuota",
+    invalidRecipientMsg: 'Nessun indirizzo email valido trovato. Controlla il destinatario',
     emptySubjectMsg: "L'oggetto non può essere vuoto",
     emptyContentMsg: 'Il contenuto non può essere vuoto',
     noSeparateSendMsg: "L'invio separato non supporta ancora gli allegati",

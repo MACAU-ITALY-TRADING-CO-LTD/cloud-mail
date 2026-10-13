@@ -240,6 +240,7 @@ const zh = {
     logOut: '登出',
     clearContentConfirm: '確定要清除所有內容嗎？',
     emptyRecipientMsg: '收件者電郵地址不可留空',
+    invalidRecipientMsg: '未能識別電郵地址，請檢查收件者格式',
     emptySubjectMsg: '主旨不可留空',
     emptyContentMsg: '電郵內容不可留空',
     noSeparateSendMsg: '分開傳送暫時不支援附件',
