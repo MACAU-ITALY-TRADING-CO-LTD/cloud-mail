@@ -209,3 +209,22 @@ test('sending uses the selected mailbox and the edited signature in the message 
   expect(sent.content).toContain('Bob edited signature');
   expect(sent.text).toContain('Bob edited signature');
 });
+
+test('edits typed while a signature save is pending are not overwritten by its response', async ({ page }) => {
+  await setup(page);
+  let finishSave;
+  await page.route('**/api/account/signature', async route => {
+    const submitted = route.request().postDataJSON();
+    await new Promise(resolve => { finishSave = resolve; });
+    await route.fulfill({ json: { code: 200, data: submitted } });
+  });
+  await setBody(page, '<p>Submitted signature</p>', true);
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => typeof finishSave).toBe('function');
+  await setBody(page, '<p>More recent unsaved edit</p>', true);
+  finishSave();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+  await expect(settingsBody(page)).toContainText('More recent unsaved edit');
+  await page.getByRole('link', { name: 'Away', exact: true }).click();
+  await expect(page.getByText('Discard unsaved signature changes?', { exact: true })).toBeVisible();
+});

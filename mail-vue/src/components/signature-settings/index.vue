@@ -70,13 +70,19 @@ async function save() {
   form.html = editor.value.getContent();
   if (new TextEncoder().encode(form.html).length > 512 * 1024) { ElMessage.error(t('signatureTooLarge')); return; }
   saving.value = true;
+  const submitted = { ...form };
   try {
-    const saved = await accountSaveSignature({ accountId: selectedId.value, ...form });
+    const saved = await accountSaveSignature({ accountId: selectedId.value, ...submitted });
     Object.assign(accounts.value.find(a => a.accountId === selectedId.value), saved);
-    select(selectedId.value);
-    editor.value.setContent(saved.html);
-    form.html = editor.value.getContent();
-    baseline.value = JSON.stringify(form);
+    if (JSON.stringify(form) === JSON.stringify(submitted)) {
+      select(selectedId.value);
+      editor.value.setContent(saved.html);
+      form.html = editor.value.getContent();
+      baseline.value = JSON.stringify(form);
+    } else {
+      // Keep edits typed while the request was in flight, and keep them dirty.
+      baseline.value = JSON.stringify({ html: saved.html, autoNew: saved.autoNew, autoReplyForward: saved.autoReplyForward });
+    }
     ElMessage.success(t('saveSuccessMsg'));
   } catch { /* The HTTP interceptor displays the error; keep the user's edits. */ } finally { saving.value = false; }
 }
