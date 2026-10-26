@@ -28,3 +28,4 @@ mail-vue/dist
 
 mail-vue/test-results/
 mail-vue/playwright-report/
+mail-vue/.signature-test-dist/

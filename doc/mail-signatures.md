@@ -41,7 +41,7 @@ dropping signature data.
 - `cd mail-worker && pnpm test:unit`: behavior, sanitizer and real SQLite persistence
   tests, including ownership, deleted accounts and migration re-runs.
 - `cd mail-vue && pnpm exec playwright install chromium && pnpm test:e2e`:
-  browser integration using real Vue components and TinyMCE, with isolated mock
+  browser integration using production bundles of the real Vue components and TinyMCE, with isolated mock
   accounts and HTTP responses. Test fixtures are outside the production build.
 - `cd mail-vue && pnpm build`
 - `cd mail-worker && pnpm exec wrangler deploy --dry-run`
