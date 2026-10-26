@@ -15,23 +15,28 @@ import {useSettingStore} from '@/store/setting.js'
 defineExpose({
   clearEditor,
   focus,
-  getContent
+  getContent,
+  setContent,
+  isReady: () => isInitialized.value
 })
 
 const props = defineProps({
+  embeddedImages: Boolean,
+  autoFocus: { type: Boolean, default: true },
   defValue: {
     type: String,
     default: ''
   },
   editorId: {
     type: String,
-    default: () => `editor-${Date.now()}`
+    default: () => `editor-${crypto.randomUUID()}`
   }
 });
 
 
+let pendingContent = props.defValue
 const {locale} = useI18n()
-const emit = defineEmits(['change','focus']);
+const emit = defineEmits(['change','focus','ready']);
 const editor = shallowRef(null);
 const isInitialized = ref(false);
 const editorRef = ref(null);
@@ -48,12 +53,11 @@ onBeforeUnmount(() => {
 });
 
 watch(() => props.defValue, (newValue) => {
-  if (editor.value && editor.value.getContent() !== newValue) {
-    editor.value.setContent(newValue);
-  }
+  if (getContent() !== newValue) setContent(newValue);
 });
 
 watch(() => [uiStore.dark, settingStore.lang], () => {
+  pendingContent = getContent();
   destroyEditor();
   initEditor();
 });
@@ -70,11 +74,7 @@ const language = computed(() => {
   return 'en'
 })
 
-function clearEditor() {
-  if (editor.value) {
-    editor.value.setContent('');
-  }
-}
+function clearEditor() { setContent(''); }
 
 function initTinyMCE() {
   if (window.tinymce) {
@@ -94,7 +94,7 @@ function initEditor() {
     selector: `#${props.editorId}`,
     statusbar: false,
     height: "100%",
-    auto_focus: true,
+    ...(props.autoFocus ? { auto_focus: true } : {}),
     //relative_urls: false,  //阻止 img标签域名和网站域名相同 自动把链接转换相对路径
     //remove_script_host: false, // 阻止删除 URL 中的域名
     forced_root_block: 'div',
@@ -119,11 +119,12 @@ function initEditor() {
     setup: (ed) => {
       editor.value = ed;
       ed.on('init', () => {
-        ed.setContent(props.defValue);
+        ed.setContent(pendingContent);
         isInitialized.value = true;
+        emit('ready');
       });
-      ed.on('input change', () => {
-        const content = ed.getContent();
+      ed.on('input change SetContent undo redo', () => {
+        const content = getContent();
         const text = ed.getContent({format: 'text'});
         emit('change', content, text);
       });
@@ -131,7 +132,6 @@ function initEditor() {
         emit('focus', focus);
       })
     },
-    autofocus: true,
     branding: false,
     file_picker_types: 'image',
     image_dimensions: false,
@@ -147,6 +147,10 @@ function initEditor() {
         let file = e.target.files[0];
         const reader = new FileReader();
         reader.onload = () => {
+          if (props.embeddedImages) {
+            callback(reader.result, {title: file.name});
+            return;
+          }
           const id = 'blobid' + (new Date()).getTime();
           const blobCache = tinymce.activeEditor.editorUpload.blobCache;
           const base64 = reader.result.split(',')[1];
@@ -165,17 +169,31 @@ function initEditor() {
 
 function focus() {
   nextTick(() => {
-    editor.value.focus()
+    editor.value?.focus()
   })
 }
 
 function getContent() {
-  return editor.value.getContent()
+  const html = (isInitialized.value ? editor.value?.getContent() : pendingContent) ?? pendingContent;
+  if (!props.embeddedImages || !html.includes('blob:')) return html;
+  const root = document.createElement('div');
+  root.innerHTML = html;
+  root.querySelectorAll('img[src^="blob:"]').forEach(img => {
+    const blob = editor.value?.editorUpload.blobCache.getByUri(img.getAttribute('src'));
+    if (blob) img.setAttribute('src', `data:${blob.blob().type};base64,${blob.base64()}`);
+  });
+  return root.innerHTML;
 }
 
 
+function setContent(content) {
+  pendingContent = content;
+  if (isInitialized.value && editor.value) editor.value.setContent(content);
+}
+
 function destroyEditor() {
   if (editor.value) {
+    isInitialized.value = false;
     editor.value.destroy();
     editor.value = null;
   }

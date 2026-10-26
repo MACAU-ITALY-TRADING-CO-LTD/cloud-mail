@@ -25,3 +25,6 @@ mail-vue/node_modules
 mail-vue/dist
 .wrangler
 .venv
+
+mail-vue/test-results/
+mail-vue/playwright-report/

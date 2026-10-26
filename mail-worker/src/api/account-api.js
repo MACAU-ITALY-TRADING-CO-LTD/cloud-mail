@@ -1,3 +1,4 @@
+import signatureService from '../service/signature-service';
 import app from '../hono/hono';
 import accountService from '../service/account-service';
 import result from '../model/result';
@@ -31,4 +32,11 @@ app.put('/account/setAllReceive', async (c) => {
 app.put('/account/setAsTop', async (c) => {
 	await accountService.setAsTop(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
+});
+
+app.get('/account/signatures', async (c) => {
+  return c.json(result.ok(await signatureService.list(c, userContext.getUserId(c))));
+});
+app.put('/account/signature', async (c) => {
+  return c.json(result.ok(await signatureService.save(c, await c.req.json(), userContext.getUserId(c))));
 });

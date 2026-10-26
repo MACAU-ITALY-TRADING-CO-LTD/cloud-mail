@@ -43,6 +43,7 @@
         <el-option label="Italiano" value="it" @pointerdown.prevent.stop="changeLang('it')"/>
       </el-select>
     </div>
+    <SignatureSettings />
     <div class="del-email" v-perm="'my:delete'">
       <div class="title">{{$t('deleteUser')}}</div>
       <div style="color: var(--regular-text-color);">
@@ -62,6 +63,7 @@
   </div>
 </template>
 <script setup>
+import SignatureSettings from "@/components/signature-settings/index.vue";
 import {reactive, ref, defineOptions} from 'vue'
 import {resetPassword, userDelete} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
