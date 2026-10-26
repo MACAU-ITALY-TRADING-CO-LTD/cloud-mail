@@ -85,6 +85,10 @@ jobs:
         working-directory: ./mail-worker
         run: pnpm wrangler telemetry disable
 
+      - name: Verify Cloudflare deployment credentials
+        working-directory: ./mail-worker
+        run: pnpm wrangler whoami
+
       - name: 🛠️ 设置环境 / Set up environment
         working-directory: ./mail-worker
         run: |
