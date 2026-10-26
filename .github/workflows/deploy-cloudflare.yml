@@ -69,9 +69,25 @@ jobs:
         working-directory: ./mail-worker
         run: pnpm exec vitest run --config vitest.unit.config.js
 
+      - name: Install frontend test dependencies
+        working-directory: ./mail-vue
+        run: pnpm install --frozen-lockfile
+
+      - name: Install browser for signature integration tests
+        working-directory: ./mail-vue
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Test signature editor and compose flows
+        working-directory: ./mail-vue
+        run: pnpm test:e2e --workers=2
+
       - name: 📡 禁用 Wrangler 遥测 / Disable wrangler telemetry
         working-directory: ./mail-worker
         run: pnpm wrangler telemetry disable
+
+      - name: Verify Cloudflare deployment credentials
+        working-directory: ./mail-worker
+        run: pnpm wrangler whoami
 
       - name: 🛠️ 设置环境 / Set up environment
         working-directory: ./mail-worker
@@ -234,6 +250,10 @@ jobs:
       - name: 🗃️ Create oversized mail alert tables
         working-directory: ./mail-worker
         run: pnpm wrangler d1 execute db --remote -c wrangler-action.toml --file migrations/20260925_oversize_mail_alert.sql
+
+      - name: Create per-mailbox signature table
+        working-directory: ./mail-worker
+        run: pnpm wrangler d1 execute db --remote -c wrangler-action.toml --file migrations/20261026_account_signature.sql
 
       - name: 🚀 开始部署 / Start deployment
         id: deploy
