@@ -7,14 +7,15 @@
             <Icon icon="hugeicons:quill-write-01" width="28" height="28"/>
           </span>
           <span class="sender">{{ $t('sender') }}:</span>
-          <span class="sender-name">{{ form.name }}</span>
-          <span class="send-email"><{{ form.sendEmail }}></span>
+          <el-select class="sender-select" :model-value="form.accountId" @change="changeSender" :aria-label="t('sender')" :disabled="senderChanging">
+            <el-option v-for="account in signatureAccounts" :key="account.accountId" :value="account.accountId" :label="`${account.name} <${account.email}>`" />
+          </el-select>
         </div>
-        <div @click="close" style="cursor: pointer;">
+        <button class="compose-close" type="button" :aria-label="t('signatureClose')" @click="close">
           <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
-        </div>
+        </button>
       </div>
-      <div class="container" :class="{'has-cc': showCc || form.cc.length}">
+      <div class="container" :class="{'has-cc': showCc || form.cc.length, 'signature-error': signatureFailed}">
         <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" :aria-label="t('recipient')" data-testid="compose-to" >
           <template #prefix>
             <div class="item-title" >{{ $t('recipient') }}</div>
@@ -48,8 +49,12 @@
           <template #prefix><div class="item-title">{{ t('cc') }}</div></template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
-        <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
+        <el-alert v-if="signatureFailed" type="warning" :closable="false" :title="t('signatureLoadError')">
+          <el-button text @click="retrySignatures">{{ t('signatureRetry') }}</el-button>
+        </el-alert>
+        <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" @ready="editorReady" />
         <div class="button-item">
+          <el-button text :disabled="!activeSignature?.html || senderChanging" @click="insertSignature">{{ t('signatureInsert') }}</el-button>
           <div class="att-add" @click="chooseFile">
             <Icon icon="iconamoon:attachment-fill" width="24" height="24"/>
           </div>
@@ -105,6 +110,8 @@
   </div>
 </template>
 <script setup>
+import { accountSignatures } from '@/request/account.js';
+import { updateSignature, signatureSnapshot } from '@/utils/signatures.js';
 import tinyEditor from '@/components/tiny-editor/index.vue'
 import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, getCurrentInstance} from "vue";
 import {Icon} from "@iconify/vue";
@@ -155,6 +162,13 @@ const percent = ref(0)
 let percentMessage = null
 let sending = false
 const defValue = ref('')
+const signatureAccounts = ref([])
+const signatureFailed = ref(false)
+const senderChanging = ref(false)
+const activeSignature = computed(() => signatureAccounts.value.find(a => a.accountId === form.accountId))
+let opening = false
+let initialContent = ''
+let rememberInitial = false
 const contactsTabRef = ref({})
 const showContacts = ref(false)
 const mySelect = ref()
@@ -180,6 +194,7 @@ const form = reactive({
   attachments: [],
   draftId: null,
   replyAll: false,
+  signatureSnapshot: '',
 })
 
 const selectRecipientList = ref([])
@@ -319,6 +334,7 @@ function chooseFile() {
 }
 
 async function sendEmail() {
+  if (senderChanging.value) return
 
   if (form.receiveEmail.length === 0) {
     ElMessage({
@@ -338,9 +354,7 @@ async function sendEmail() {
     return
   }
 
-  if (!form.content) {
-    form.content = editor.value.getContent();
-  }
+  form.content = editor.value.getContent();
 
   if (!form.content) {
     ElMessage({
@@ -460,6 +474,10 @@ function addRecipientRecord() {
 }
 
 function resetForm() {
+  form.signatureSnapshot = ''
+  initialContent = ''
+  rememberInitial = false
+  defValue.value = ''
   form.receiveEmail = []
   form.cc = []
   showCc.value = false
@@ -488,77 +506,129 @@ function focusChange() {
   if (selectStatus) openSelect()
 }
 
-function openForward(email) {
-  resetForm();
-
-  email.subject = email.subject || ''
-
-  form.subject = email.subject
-  form.sendType = 'forward'
-
-  defValue.value = ''
-
-  setTimeout(() => {
-    defValue.value = `
-      ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`}
-    `
-    open()
-
-    nextTick(() => {
-      backReply.content = editor.value.getContent()
-      backReply.subject = form.subject
-      backReply.receiveEmail = [...form.receiveEmail]
-      backReply.cc = [...form.cc]
-      backReply.sendType = form.sendType
-    })
-
-  });
+async function loadSignatures() {
+  signatureFailed.value = false
+  try {
+    signatureAccounts.value = await accountSignatures()
+  } catch {
+    signatureFailed.value = true
+    const current = accountStore.currentAccount.email ? accountStore.currentAccount : userStore.user.account
+    signatureAccounts.value = [{ ...current, email: current.email || userStore.user.email, name: current.name || userStore.user.name }]
+  }
 }
 
-function openReply(email, all = false) {
+function setBody(html) {
+  defValue.value = html
+  editor.value.setContent(html)
+  form.content = editor.value.getContent()
+  // setContent is deferred until TinyMCE's init if necessary.
+  if (!form.content && html) form.content = html
+}
 
-  resetForm();
+function rememberBody() {
+  initialContent = editor.value.getContent()
+  if (form.sendType === 'reply' || form.sendType === 'forward') {
+    backReply.content = initialContent
+    backReply.subject = form.subject
+    backReply.receiveEmail = [...form.receiveEmail]
+    backReply.cc = [...form.cc]
+    backReply.sendType = form.sendType
+  }
+}
 
-  email.subject = email.subject || ''
+function editorReady() {
+  if (rememberInitial) {
+    form.signatureSnapshot = signatureSnapshot(editor.value.getContent())
+    rememberBody()
+    rememberInitial = false
+  }
+}
 
-  const recipients = replyRecipients(email, [email.toEmail, accountStore.currentAccount.email, userStore.user.email], all)
-  form.receiveEmail = recipients.to
-  form.cc = recipients.cc
-  showCc.value = form.cc.length > 0
-  form.replyAll = all
-  form.subject = (
-      email.subject.startsWith('Re:') ||
-      email.subject.startsWith('Re：') ||
-      email.subject.startsWith('回复：') ||
-      email.subject.startsWith('回复:')) ? email.subject : 'Re: ' + email.subject
-  form.sendType = 'reply'
-  form.emailId = email.emailId
+async function beginCompose(mode, email = null, all = false) {
+  if (opening || show.value) { editor.value.focus(); return }
+  opening = true
+  try {
+    await loadSignatures()
+    resetForm()
+    const preferred = signatureAccounts.value.find(a => a.accountId === email?.accountId)
+      || signatureAccounts.value.find(a => a.accountId === accountStore.currentAccount.accountId)
+      || signatureAccounts.value.find(a => a.email === userStore.user.email)
+      || signatureAccounts.value[0]
+    if (!preferred) return
+    Object.assign(form, { sendEmail: preferred.email, name: preferred.name, accountId: preferred.accountId, sendType: mode })
+    let content = '<div><br></div>'
+    if (email) {
+      const original = formatImage(email.content) || `<pre style="font-family: inherit;white-space: pre-wrap">${escapeHtml(email.text || '')}</pre>`
+      if (mode === 'reply') {
+        const recipients = replyRecipients(email, signatureAccounts.value.map(a => a.email), all)
+        form.receiveEmail = recipients.to
+        form.cc = recipients.cc
+        showCc.value = form.cc.length > 0
+        form.replyAll = all
+        form.subject = /^(Re[:：]|回复[:：])/i.test(email.subject || '') ? email.subject : 'Re: ' + (email.subject || '')
+        form.emailId = email.emailId
+        content += `<div data-mitco-quote="1"><br><div>${escapeHtml(formatDetailDate(email.createTime))} ${escapeHtml(email.name || '')} &lt;${escapeHtml(email.sendEmail || '')}&gt; ${t('wrote')}:</div><blockquote class="mceNonEditable" style="margin: 0 0 0 0.8ex;border-left: 1px solid #ccc;padding-left: 1ex;">${original}</blockquote></div>`
+      } else {
+        form.subject = email.subject || ''
+        content += `<div data-mitco-quote="1">${original}</div>`
+      }
+    }
+    const result = updateSignature(content, preferred, mode)
+    form.signatureSnapshot = result.snapshot
+    show.value = true
+    rememberInitial = true
+    setBody(result.html)
+    await nextTick()
+    form.signatureSnapshot = signatureSnapshot(editor.value.getContent()) || result.snapshot
+    rememberBody()
+    if (editor.value.isReady()) rememberInitial = false
+    editor.value.focus()
+  } finally { opening = false }
+}
 
-  defValue.value = ''
+function escapeHtml(value) {
+  const el = document.createElement('div')
+  el.textContent = value
+  return el.innerHTML
+}
 
-  setTimeout(() => {
-    defValue.value = `
-    <div></div>
-    <div>
-    <br>
-        ${formatDetailDate(email.createTime)} ${email.name} &lt${email.sendEmail}&gt ${t('wrote')}:
-    </div>
-    <blockquote class="mceNonEditable" style="margin: 0 0 0 0.8ex;border-left: 1px solid rgb(204,204,204);padding-left: 1ex;">
-      <articl>
-          ${formatImage(email.content) || `<pre style="font-family: inherit;word-break: break-word;white-space: pre-wrap;margin: 0">${email.text}</pre>`}
-      </article>
-    </blockquote>`
-    open()
+function openForward(email) { return beginCompose('forward', email) }
+function openReply(email, all = false) { return beginCompose('reply', email, all) }
 
-    nextTick(() => {
-      backReply.content = editor.value.getContent()
-      backReply.subject = form.subject
-      backReply.receiveEmail = [...form.receiveEmail]
-      backReply.cc = [...form.cc]
-      backReply.sendType = form.sendType
-    })
-  })
+async function replaceSignature(signature, force = false) {
+  const html = editor.value.getContent()
+  let result = updateSignature(html, signature, form.sendType, { snapshot: form.signatureSnapshot, force })
+  if (result.edited) {
+    try {
+      await ElMessageBox.confirm(t('signatureReplaceEdited'), {
+        confirmButtonText: t('signatureReplace'), cancelButtonText: t('signatureKeep'), type: 'warning'
+      })
+    } catch { return }
+    result = updateSignature(html, signature, form.sendType, { snapshot: form.signatureSnapshot, force, replaceEdited: true })
+  }
+  setBody(result.html)
+  form.signatureSnapshot = signatureSnapshot(editor.value.getContent()) || result.snapshot
+}
 
+async function changeSender(id) {
+  const selected = signatureAccounts.value.find(a => a.accountId === id)
+  if (!selected || senderChanging.value) return
+  senderChanging.value = true
+  try {
+    await replaceSignature(selected)
+    Object.assign(form, { accountId: id, sendEmail: selected.email, name: selected.name })
+  } finally { senderChanging.value = false }
+}
+
+async function insertSignature() {
+  if (senderChanging.value) return
+  senderChanging.value = true
+  try { await replaceSignature(activeSignature.value, true) } finally { senderChanging.value = false }
+}
+
+async function retrySignatures() {
+  await loadSignatures()
+  if (!signatureFailed.value) await replaceSignature(activeSignature.value)
 }
 
 function formatImage(content) {
@@ -567,28 +637,21 @@ function formatImage(content) {
   return content.replace(/{{domain}}/g, toOssDomain(domain) + '/');
 }
 
-function open() {
-  if (!accountStore.currentAccount.email) {
-    form.sendEmail = userStore.user.email;
-    form.accountId = userStore.user.account.accountId;
-    form.name = userStore.user.name;
-  } else {
-    form.sendEmail = accountStore.currentAccount.email;
-    form.accountId = accountStore.currentAccount.accountId;
-    form.name = accountStore.currentAccount.name;
-  }
-  show.value = true;
-  editor.value.focus()
-}
+function open() { return beginCompose('') }
 
-function openDraft(draft) {
-  resetForm()
-  Object.assign(form, {...draft, cc: [...(draft.cc || [])]})
-  showCc.value = form.cc.length > 0
-  defValue.value = ''
-  setTimeout(() => defValue.value = form.content)
-  show.value = true;
-  editor.value.focus()
+async function openDraft(draft) {
+  if (opening || show.value) { editor.value.focus(); return }
+  opening = true
+  try {
+    await loadSignatures()
+    resetForm()
+    Object.assign(form, { ...draft, cc: [...(draft.cc || [])] })
+    showCc.value = form.cc.length > 0
+    // Preserve the draft byte-for-byte at the application level: never auto-insert here.
+    show.value = true
+    setBody(draft.content || '')
+    editor.value.focus()
+  } finally { opening = false }
 }
 
 const handleKeyDown = (event) => {
@@ -606,18 +669,23 @@ onUnmounted(() => {
 });
 
 function close() {
+  if (senderChanging.value || !show.value) return
 
   if (selectStatus) openSelect();
 
-  if (!form.content) {
-    form.content = editor.value.getContent();
-  }
+  form.content = editor.value.getContent();
 
   if (form.draftId) {
     draftStore.setDraft = {...toRaw(form)}
     show.value = false
     resetForm()
     return;
+  }
+
+  if (!form.sendType && form.content === initialContent && !form.subject && !form.receiveEmail.length && !form.cc.length && !form.attachments.length) {
+    show.value = false
+    resetForm()
+    return
   }
 
   if (!(form.content || form.subject || form.receiveEmail.length > 0 || form.cc.length > 0)) {
@@ -669,6 +737,7 @@ function close() {
 
 </script>
 <style>
+
 .send-size-error {
   width: min(480px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
@@ -692,6 +761,7 @@ function close() {
 </style>
 <style scoped lang="scss">
 .send {
+  z-index: 1000;
   position: fixed;
   top: 0;
   left: 0;
@@ -711,6 +781,7 @@ function close() {
     border-radius: 8px;
     display: grid;
     grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
     overflow: hidden;
     @media (max-width: 1024px) {
       width: 100%;
@@ -729,10 +800,23 @@ function close() {
       justify-content: space-between;
       margin-bottom: 10px;
 
+      .compose-close { background: none; border: 0; color: inherit; cursor: pointer; padding: 4px; }
+
+      .title-left .sender-select {
+        width: 100%;
+        max-width: 340px;
+        min-width: 0;
+        flex: 1;
+        margin-left: 8px;
+      }
+
       .title-left {
+        min-width: 0;
+        flex: 1;
+        margin-right: 12px;
         align-items: center;
         display: grid;
-        grid-template-columns: auto auto auto 1fr;
+        grid-template-columns: auto auto minmax(0, 1fr);
       }
 
       .title-text {
@@ -756,19 +840,20 @@ function close() {
       }
 
 
-      div {
-        display: flex;
-        align-items: center;
-      }
+
     }
 
     .container {
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr);
       height: 100%;
       display: grid;
       grid-template-rows: auto auto 1fr auto auto;
       &.has-cc {
         grid-template-rows: auto auto auto 1fr auto auto;
       }
+      &.signature-error { grid-template-rows: auto auto auto 1fr auto auto; }
+      &.has-cc.signature-error { grid-template-rows: auto auto auto auto 1fr auto auto; }
       gap: 15px;
 
       .attachment-hint {
@@ -788,7 +873,9 @@ function close() {
 
       .button-item {
         display: grid;
-        grid-template-columns: auto auto 1fr auto;
+        grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 8px;
 
         .att-add {
           cursor: pointer;

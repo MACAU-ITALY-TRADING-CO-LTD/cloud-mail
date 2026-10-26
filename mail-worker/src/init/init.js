@@ -1,3 +1,4 @@
+import { signatureSchema } from '../service/signature-service';
 import settingService from '../service/setting-service';
 import emailUtils from '../utils/email-utils';
 import {emailConst} from "../const/entity-const";
@@ -30,6 +31,7 @@ const dbInit = {
 		await this.v2_9DB(c);
 		await this.v3_0DB(c);
 		await this.v3_1DB(c);
+		await c.env.db.prepare(signatureSchema).run();
 		await settingService.refresh(c);
 		return c.text('success');
 	},
