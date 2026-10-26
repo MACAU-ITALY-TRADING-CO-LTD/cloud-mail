@@ -112,6 +112,8 @@ function initEditor() {
     language: language.value,
     language_load: true,
     menubar: false,
+    // Let the browser provide spelling suggestions through its native menu.
+    browser_spellcheck: true,
     // Keep the browser's native copy/paste menu available in the message body.
     contextmenu: false,
     license_key: 'gpl',
